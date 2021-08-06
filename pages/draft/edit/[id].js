@@ -1,49 +1,25 @@
 import axios from 'axios'
-import { useRouter } from 'next/router'
-import { Alert, Button, Card, Col, Container, Form, Row } from 'react-bootstrap'
+import { Button, Card, Col, Container, Form, Row } from 'react-bootstrap'
 import { useForm } from 'react-hook-form'
+import { client } from '../../../libs/client'
 //TODO:ここがいっぱいになりそうでうざいのでなんとかしたい 何か方法ないか探す
 
-// TODO:下書きデータをこのページで表示して、どこかに一覧で表示させてクリックすると編集できるようにしてみたい
-export default function Home() {
-  const router = useRouter()
-  const {
-    register,
-    handleSubmit,
-    formState: { errors }
-  } = useForm()
+export default function DraftPage({ recipe }) {
+  const { register, handleSubmit } = useForm()
 
+  //asanumaアカウントで確認できるように変更
   const onDraftSubmit = (data, e) => {
     e.preventDefault()
     const headers = {
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
+      'X-WRITE-API-KEY': process.env.NEXT_PUBLIC_WRITE_API_KEY
     }
 
     // 下書きにする場合にpostするデータに公開情報(key=public)を追加
     const draftData = { ...data, public: false }
-
     axios
-      .post('/api/register', draftData, { headers })
-      .then((res) => {
-        console.log(res)
-      })
-      .catch((err) => {
-        console.log(err)
-      })
-    router.push('/draft')
-  }
-
-  // Submitボタンを押すと発火する、引数にフォーム内で入力された値の格納されたdataを渡す
-  const onSubmit = (data, e) => {
-    e.preventDefault()
-    const headers = {
-      'Content-Type': 'application/json'
-    }
-    // 下書きにする場合にpostするデータに公開情報(key=public)を追加
-    const postData = { ...data, public: true }
-
-    axios
-      .post('/api/register', postData, {
+      // postをpatch処理に変更 エンドポイントにcontentのIDを設定するため`/${recipe.id}`を追加
+      .patch(process.env.NEXT_PUBLIC_CMS_URL + `/${recipe.id}`, draftData, {
         headers
       })
       .then((res) => {
@@ -52,16 +28,38 @@ export default function Home() {
       .catch((err) => {
         console.log(err)
       })
-    router.push('/recipes')
   }
 
+  // Submitボタンを押すと発火する、引数にフォーム内で入力された値の格納されたdataを渡す
+  const onSubmit = (data, e) => {
+    e.preventDefault()
+    const headers = {
+      'Content-Type': 'application/json',
+      'X-WRITE-API-KEY': process.env.NEXT_PUBLIC_WRITE_API_KEY
+    }
+
+    // 下書きにする場合にpostするデータに公開情報(key=public)を追加
+    const postData = { ...data, public: true }
+
+    axios
+      // postをpatch処理に変更 エンドポイントにcontentのIDを設定するため`/${recipe.id}`を追加
+      .patch(process.env.NEXT_PUBLIC_CMS_URL + `/${recipe.id}`, postData, {
+        headers
+      })
+      .then((res) => {
+        console.log(res)
+      })
+      .catch((err) => {
+        console.log(err)
+      })
+  }
   return (
     <Container>
       <Row className="mt-5 justify-content-center">
         <Col lg={8} md={10} sm={10}>
           <Card>
             <Card.Body>
-              <Card.Title>Post App</Card.Title>
+              <Card.Title>Draft Edit</Card.Title>
               <Form>
                 <Form.Group
                   className="mb-3"
@@ -69,15 +67,11 @@ export default function Home() {
                 >
                   <Form.Label>Title</Form.Label>
                   <Form.Control
+                    defaultValue={recipe.title}
                     type="text"
                     placeholder="Text input"
-                    {...register('title', { required: true })}
+                    {...register('title')}
                   />
-                  <Col>
-                    {errors.title && errors.title.type === 'required' && (
-                      <Alert variant="danger">This is required</Alert>
-                    )}
-                  </Col>
                 </Form.Group>
                 <Form.Group
                   className="mb-3"
@@ -85,29 +79,22 @@ export default function Home() {
                 >
                   <Form.Label>Description</Form.Label>
                   <Form.Control
-                    {...register('description', { required: true })}
+                    defaultValue={recipe.description}
+                    {...register('description')}
                     as="textarea"
                     placeholder="write description"
                     rows={3}
                   />
-                  <Col>
-                    {errors.description &&
-                      errors.description.type === 'required' && (
-                        <Alert variant="danger">This is required</Alert>
-                      )}
-                  </Col>
                 </Form.Group>
                 <Button
                   variant="primary"
                   className="me-3"
-                  // フォーム内に入力されたデータを引数にもつonSubmitを発火
                   onClick={handleSubmit(onSubmit)}
                 >
                   Submit
                 </Button>
                 <Button
                   variant="outline-secondary"
-                  // フォーム内のデータを引数にもつonDraftSubmitを発火
                   onClick={handleSubmit(onDraftSubmit)}
                 >
                   Draft
@@ -119,4 +106,27 @@ export default function Home() {
       </Row>
     </Container>
   )
+}
+
+// 静的生成のためのパスを指定します
+export const getStaticPaths = async () => {
+  const data = await client.get({ endpoint: 'recipe' })
+  const paths = data.contents.map((content) => `/draft/edit/${content.id}`)
+
+  return {
+    paths,
+    fallback: false // getStaticPathsで返されないパスをすべて404ページで返します。
+  }
+}
+
+// データをテンプレートに受け渡す部分の処理を記述します
+export const getStaticProps = async (context) => {
+  const id = context.params.id
+
+  const data = await client.get({ endpoint: 'recipe', contentId: id })
+  return {
+    props: {
+      recipe: data
+    }
+  }
 }
