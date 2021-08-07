@@ -32,3 +32,6 @@ yarn-error.log*
 
 # vercel
 .vercel
+memo.md
+.env
+yarn.lock

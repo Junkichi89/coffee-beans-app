@@ -1,65 +1,101 @@
-import Head from 'next/head'
-import styles from '../styles/Home.module.css'
+import axios from 'axios';
+import { useRouter } from 'next/router';
+import { Alert, Button, Card, Col, Container, Form, Row } from 'react-bootstrap';
+import { useForm } from 'react-hook-form';
+import firebase from '../lib/cilentApp.js';
+//TODO:ここがいっぱいになりそうでうざいのでなんとかしたい 何か方法ないか探す
 
 export default function Home() {
+  const router = useRouter();
+
+  const db = firebase.firestore();
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm();
+
+  // Submitボタンを押すと発火する、引数にフォーム内で入力された値の格納されたdataを渡す
+  const onSubmit = async (data, e) => {
+    e.preventDefault();
+
+    await db
+    .collection('coffee-beans')
+    .add({...data})
+    .then((req) => {
+      console.log(req);
+      console.log('Document successfully written!');
+      router.push('/posts')
+    })
+    .catch((error) => {
+      console.error('Error writing document: ', error);
+    });
+
+  };
+
   return (
-    <div className={styles.container}>
-      <Head>
-        <title>Create Next App</title>
-        <link rel="icon" href="/favicon.ico" />
-      </Head>
-
-      <main className={styles.main}>
-        <h1 className={styles.title}>
-          Welcome to <a href="https://nextjs.org">Next.js!</a>
-        </h1>
-
-        <p className={styles.description}>
-          Get started by editing{' '}
-          <code className={styles.code}>pages/index.js</code>
-        </p>
-
-        <div className={styles.grid}>
-          <a href="https://nextjs.org/docs" className={styles.card}>
-            <h3>Documentation &rarr;</h3>
-            <p>Find in-depth information about Next.js features and API.</p>
-          </a>
-
-          <a href="https://nextjs.org/learn" className={styles.card}>
-            <h3>Learn &rarr;</h3>
-            <p>Learn about Next.js in an interactive course with quizzes!</p>
-          </a>
-
-          <a
-            href="https://github.com/vercel/next.js/tree/master/examples"
-            className={styles.card}
-          >
-            <h3>Examples &rarr;</h3>
-            <p>Discover and deploy boilerplate example Next.js projects.</p>
-          </a>
-
-          <a
-            href="https://vercel.com/import?filter=next.js&utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-            className={styles.card}
-          >
-            <h3>Deploy &rarr;</h3>
-            <p>
-              Instantly deploy your Next.js site to a public URL with Vercel.
-            </p>
-          </a>
-        </div>
-      </main>
-
-      <footer className={styles.footer}>
-        <a
-          href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Powered by{' '}
-          <img src="/vercel.svg" alt="Vercel Logo" className={styles.logo} />
-        </a>
-      </footer>
-    </div>
-  )
+    <Container>
+      <Row className='mt-5 justify-content-center'>
+        <Col lg={8} md={10} sm={10}>
+          <Card>
+            <Card.Body>
+              <Card.Title>Post App</Card.Title>
+              <Form>
+                <Form.Group
+                  className='mb-3'
+                  controlId='exampleForm.ControlInput'
+                >
+                  <Form.Label>Title</Form.Label>
+                  <Form.Control
+                    type='text'
+                    placeholder='Text input'
+                    {...register('title', { required: true })}
+                  />
+                  <Col>
+                    {errors.title && errors.title.type === 'required' && (
+                      <Alert variant='danger'>This is required</Alert>
+                    )}
+                  </Col>
+                </Form.Group>
+                <Form.Group
+                  className='mb-3'
+                  controlId='exampleForm.ControlTextarea'
+                >
+                  <Form.Label>Description</Form.Label>
+                  <Form.Control
+                    {...register('description', { required: true })}
+                    as='textarea'
+                    placeholder='write description'
+                    rows={3}
+                  />
+                  <Col>
+                    {errors.description &&
+                      errors.description.type === 'required' && (
+                        <Alert variant='danger'>This is required</Alert>
+                      )}
+                  </Col>
+                </Form.Group>
+                <Button
+                  variant='primary'
+                  className='me-3'
+                  // フォーム内に入力されたデータを引数にもつonSubmitを発火
+                  onClick={handleSubmit(onSubmit)}
+                >
+                  Submit
+                </Button>
+                <Button
+                  variant='outline-secondary'
+                  // フォーム内のデータを引数にもつonDraftSubmitを発火
+                  onClick={handleSubmit(onSubmit)}
+                >
+                  Draft
+                </Button>
+              </Form>
+            </Card.Body>
+          </Card>
+        </Col>
+      </Row>
+    </Container>
+  );
 }
