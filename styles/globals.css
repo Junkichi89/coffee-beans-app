@@ -14,3 +14,12 @@ a {
 * {
   box-sizing: border-box;
 }
+
+
+.dn {
+  display: none;
+}
+
+.db {
+  display: block;
+}
